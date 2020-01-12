@@ -1,10 +1,12 @@
 package com.ecommerce.api.user;
 
-import org.springframework.hateoas.server.core.*;
 import org.springframework.hateoas.server.mvc.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.hateoas.*;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,8 +33,13 @@ public class UserController {
     }
 
     @PostMapping("/users")
-    User newUser(@RequestBody User user) {
-        return repository.save(user);
+    ResponseEntity<?> newUser(@RequestBody User newUser) throws URISyntaxException {
+
+        EntityModel<User> userResource = assembler.toModel(repository.save(newUser));
+
+        return ResponseEntity
+                .created(new URI(userResource.getRequiredLink(IanaLinkRelations.SELF).getHref()))
+                .body(userResource);
     }
 
     @GetMapping("/users/{id}")
@@ -44,9 +51,11 @@ public class UserController {
         return assembler.toModel(user);
     }
 
+
     @PutMapping("/users/{id}")
-    User replaceUser(@RequestBody User newUser, @PathVariable Long id){
-        return repository.findById(id)
+    ResponseEntity<?> replaceUser(@RequestBody User newUser, @PathVariable Long id) throws URISyntaxException {
+
+        User updatedUser = repository.findById(id)
                 .map(user -> {
                     user.setName(newUser.getName());
                     return repository.save(user);
@@ -55,10 +64,17 @@ public class UserController {
                     newUser.setId(id);
                     return repository.save(newUser);
                 });
+
+        EntityModel<User> userResource = assembler.toModel(updatedUser);
+
+        return ResponseEntity
+                .created(new URI(userResource.getRequiredLink(IanaLinkRelations.SELF).getHref()))
+                .body(userResource);
     }
 
     @DeleteMapping("/users/{id}")
-    void deleteUser(@PathVariable Long id){
+    ResponseEntity<?> deleteUser(@PathVariable Long id){
         repository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
